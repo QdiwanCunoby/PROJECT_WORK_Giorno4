@@ -1,0 +1,89 @@
+### LipariBank — Giorno 3 (REST Client per VS Code)
+# Esegui le richieste in ordine: i POST salvano l'id che viene riusato dalle successive.
+@baseUrl = http://localhost:3000/api
+
+#####################################################################
+# CUSTOMER (5)
+#####################################################################
+
+### 1. POST /customers → 201
+# @name createCustomer
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "fiscalCode": "RSSMRA80A01H501U",
+  "firstName": "Mario",
+  "lastName": "Rossi",
+  "email": "mario.rossi@example.com",
+  "phone": "+39 333 1234567"
+}
+
+### 2. GET /customers → 200
+GET {{baseUrl}}/customers
+
+### 3. GET /customers/:id → 200
+GET {{baseUrl}}/customers/{{createCustomer.response.body.data.id}}
+
+### 4. PUT /customers/:id → 200
+PUT {{baseUrl}}/customers/{{createCustomer.response.body.data.id}}
+Content-Type: application/json
+
+{
+  "email": "m.rossi@liparibank.it",
+  "status": "INACTIVE"
+}
+
+### 5. DELETE /customers/:id → 204
+DELETE {{baseUrl}}/customers/{{createCustomer.response.body.data.id}}
+
+#####################################################################
+# ACCOUNT (5)
+#####################################################################
+
+### 6. POST /accounts → 201
+# @name createAccount
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{
+  "iban": "IT60X0542811101000000123456",
+  "holderName": "Mario Rossi",
+  "balance": 1500,
+  "accountType": "CHECKING",
+  "customerId": "c1"
+}
+
+### 7. GET /accounts → 200
+GET {{baseUrl}}/accounts
+
+### 8. GET /accounts/:id → 200
+GET {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
+
+### 9. PUT /accounts/:id → 200
+PUT {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
+Content-Type: application/json
+
+{
+  "holderName": "Mario Rossi Jr.",
+  "accountType": "SAVINGS"
+}
+
+### 10. DELETE /accounts/:id → 204
+DELETE {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
+
+#####################################################################
+# CASI DI ERRORE (extra)
+#####################################################################
+
+### GET id inesistente → 404 NOT_FOUND
+GET {{baseUrl}}/accounts/id-inesistente
+
+### POST con body non valido → 400 VALIDATION_ERROR
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "iban": "IT00", "holderName": "", "balance": -10, "accountType": "XXX", "customerId": "c1" }
+
+### Route inesistente → 404 ROUTE_NOT_FOUND
+GET {{baseUrl}}/foo
