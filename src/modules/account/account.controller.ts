@@ -1,46 +1,36 @@
-// Controller: converte HTTP ↔ business logic. Non contiene logica.
-import { Request, Response, NextFunction } from "express";
+// Controller: converte HTTP ↔ business logic. Non contiene logica né try/catch:
+// gli errori lanciati dal Service arrivano all'errorHandler tramite asyncHandler.
+import { Request, Response } from "express";
 import { AccountService } from "./account.service";
-import { ok } from "../../shared/apiResponse";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { ok } from "../../utils/apiResponse";
 
 export class AccountController {
   constructor(private readonly service: AccountService) {}
 
-  getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const accounts = await this.service.getAllAccounts();
-      res.status(200).json(ok(accounts));
-    } catch (error) { next(error); }
-  };
+  getAll = asyncHandler(async (req: Request, res: Response) => {
+    const accounts = await this.service.getAllAccounts();
+    res.status(200).json(ok(accounts));
+  });
 
-  getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const account = await this.service.getAccountById(req.params.id);
-      res.status(200).json(ok(account));
-    } catch (error) { next(error); }
-  };
+  getById = asyncHandler(async (req: Request, res: Response) => {
+    const account = await this.service.getAccountById(req.params.id);
+    res.status(200).json(ok(account));
+  });
 
-  create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      // Whitelist dei campi: id/status/createdAt inviati dal client vengono ignorati
-      const { iban, holderName, balance, accountType, customerId } = req.body ?? {};
-      const account = await this.service.createAccount({ iban, holderName, balance, accountType, customerId });
-      res.status(201).json(ok(account));
-    } catch (error) { next(error); }
-  };
+  // req.body è già validato e ripulito da validate(createAccountSchema)
+  create = asyncHandler(async (req: Request, res: Response) => {
+    const account = await this.service.createAccount(req.body);
+    res.status(201).json(ok(account));
+  });
 
-  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { holderName, accountType, status, customerId } = req.body ?? {};
-      const account = await this.service.updateAccount(req.params.id, { holderName, accountType, status, customerId });
-      res.status(200).json(ok(account));
-    } catch (error) { next(error); }
-  };
+  update = asyncHandler(async (req: Request, res: Response) => {
+    const account = await this.service.updateAccount(req.params.id, req.body);
+    res.status(200).json(ok(account));
+  });
 
-  delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      await this.service.deleteAccount(req.params.id);
-      res.status(204).send();
-    } catch (error) { next(error); }
-  };
+  delete = asyncHandler(async (req: Request, res: Response) => {
+    await this.service.deleteAccount(req.params.id);
+    res.status(204).send();
+  });
 }

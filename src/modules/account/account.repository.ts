@@ -25,8 +25,10 @@ export class AccountRepository implements IAccountRepository {
   }
 
   async create(dto: CreateAccountDto): Promise<Account> {
+    const { initialBalance, ...data } = dto;
     const account: Account = {
-      id: randomUUID(), ...dto,
+      id: randomUUID(), ...data,
+      balance: initialBalance,
       status: AccountStatus.ACTIVE, createdAt: new Date(),
     };
     this.accounts.push(account);

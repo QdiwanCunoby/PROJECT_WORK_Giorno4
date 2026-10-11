@@ -1,13 +1,18 @@
-// Stampa "[METHOD] URL - status (tempo ms)" quando la response è stata inviata
-import { Request, Response, NextFunction } from "express";
+// Logging HTTP con pino-http: una riga per richiesta completata, con reqId, status e responseTime.
+import { IncomingMessage } from "node:http";
+import pinoHttp from "pino-http";
+import { logger } from "../utils/logger";
 
-export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
-  const start = process.hrtime.bigint();
-
-  res.on("finish", () => {
-    const ms = Number(process.hrtime.bigint() - start) / 1_000_000;
-    console.log(`[${req.method}] ${req.originalUrl} - ${res.statusCode} (${ms.toFixed(1)} ms)`);
-  });
-
-  next();
-};
+export const requestLogger = pinoHttp({
+  logger,
+  genReqId: (req: IncomingMessage) => req.id,   // riusa l'id generato dal middleware requestId
+  // Della response basta lo status: gli header di sicurezza di helmet sono sempre uguali
+  serializers: { res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }) },
+  customLogLevel: (_req, res, err) => {
+    if (err || res.statusCode >= 500) return "error";
+    if (res.statusCode >= 400) return "warn";
+    return "info";
+  },
+  customSuccessMessage: (req, res) => `${req.method} ${req.url} → ${res.statusCode}`,
+  customErrorMessage: (req, res) => `${req.method} ${req.url} → ${res.statusCode}`,
+});

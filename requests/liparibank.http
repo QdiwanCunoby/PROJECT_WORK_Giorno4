@@ -1,9 +1,10 @@
-### LipariBank — Giorno 3 (REST Client per VS Code)
+### LipariBank — Giorno 4 (REST Client per VS Code)
 # Esegui le richieste in ordine: i POST salvano l'id che viene riusato dalle successive.
+# Ogni risposta ha l'header X-Request-Id: cercalo nei log del server per la correlation.
 @baseUrl = http://localhost:3000/api
 
 #####################################################################
-# CUSTOMER (5)
+# CUSTOMER
 #####################################################################
 
 ### 1. POST /customers → 201
@@ -34,56 +35,87 @@ Content-Type: application/json
   "status": "INACTIVE"
 }
 
-### 5. DELETE /customers/:id → 204
-DELETE {{baseUrl}}/customers/{{createCustomer.response.body.data.id}}
-
 #####################################################################
-# ACCOUNT (5)
+# ACCOUNT (ownerId = customer creato sopra)
 #####################################################################
 
-### 6. POST /accounts → 201
+### 5. POST /accounts → 201
 # @name createAccount
 POST {{baseUrl}}/accounts
 Content-Type: application/json
 
 {
+  "ownerId": "{{createCustomer.response.body.data.id}}",
   "iban": "IT60X0542811101000000123456",
-  "holderName": "Mario Rossi",
-  "balance": 1500,
-  "accountType": "CHECKING",
-  "customerId": "c1"
+  "type": "CHECKING",
+  "initialBalance": 1500
 }
 
-### 7. GET /accounts → 200
+### 6. GET /accounts → 200
 GET {{baseUrl}}/accounts
 
-### 8. GET /accounts/:id → 200
+### 7. GET /accounts/:id → 200
 GET {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
 
-### 9. PUT /accounts/:id → 200
+### 8. PUT /accounts/:id → 200
 PUT {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
 Content-Type: application/json
 
 {
-  "holderName": "Mario Rossi Jr.",
-  "accountType": "SAVINGS"
+  "type": "SAVINGS"
 }
 
-### 10. DELETE /accounts/:id → 204
-DELETE {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
-
 #####################################################################
-# CASI DI ERRORE (extra)
+# CASI DI ERRORE (verifica G4)
 #####################################################################
 
-### GET id inesistente → 404 NOT_FOUND
-GET {{baseUrl}}/accounts/id-inesistente
-
-### POST con body non valido → 400 VALIDATION_ERROR
+### POST /accounts con body invalido → 422 VALIDATION_ERROR con details per campo
 POST {{baseUrl}}/accounts
 Content-Type: application/json
 
-{ "iban": "IT00", "holderName": "", "balance": -10, "accountType": "XXX", "customerId": "c1" }
+{ "ownerId": "non-uuid", "iban": "IT00", "type": "DEPOSIT", "initialBalance": -50 }
+
+### GET /accounts/non-esiste → 404 NOT_FOUND
+GET {{baseUrl}}/accounts/non-esiste
+
+### POST /accounts IBAN duplicato → 409 CONFLICT
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "ownerId": "{{createCustomer.response.body.data.id}}", "iban": "IT60X0542811101000000123456", "type": "SAVINGS" }
+
+### POST /customers codice fiscale duplicato → 409 CONFLICT
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{ "fiscalCode": "rssmra80a01h501u", "firstName": "Maria", "lastName": "Rossi", "email": "maria@example.com", "phone": "3331234567" }
+
+### PUT /customers senza campi → 422
+PUT {{baseUrl}}/customers/{{createCustomer.response.body.data.id}}
+Content-Type: application/json
+
+{}
+
+### JSON malformato → 400 INVALID_JSON
+POST {{baseUrl}}/accounts
+Content-Type: application/json
+
+{ "ownerId":
+
+### Header sensibili → nei log compaiono come [REDACTED]
+GET {{baseUrl}}/accounts
+Authorization: Bearer secret-token-123
+Cookie: sid=abc123
 
 ### Route inesistente → 404 ROUTE_NOT_FOUND
 GET {{baseUrl}}/foo
+
+#####################################################################
+# CLEANUP
+#####################################################################
+
+### DELETE /accounts/:id → 204
+DELETE {{baseUrl}}/accounts/{{createAccount.response.body.data.id}}
+
+### DELETE /customers/:id → 204
+DELETE {{baseUrl}}/customers/{{createCustomer.response.body.data.id}}

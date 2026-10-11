@@ -1,46 +1,36 @@
-// Controller: converte HTTP ↔ business logic. Non contiene logica.
-import { Request, Response, NextFunction } from "express";
+// Controller: converte HTTP ↔ business logic. Non contiene logica né try/catch:
+// gli errori lanciati dal Service arrivano all'errorHandler tramite asyncHandler.
+import { Request, Response } from "express";
 import { CustomerService } from "./customer.service";
-import { ok } from "../../shared/apiResponse";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { ok } from "../../utils/apiResponse";
 
 export class CustomerController {
   constructor(private readonly service: CustomerService) {}
 
-  getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const customers = await this.service.getAllCustomers();
-      res.status(200).json(ok(customers));
-    } catch (error) { next(error); }
-  };
+  getAll = asyncHandler(async (req: Request, res: Response) => {
+    const customers = await this.service.getAllCustomers();
+    res.status(200).json(ok(customers));
+  });
 
-  getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const customer = await this.service.getCustomerById(req.params.id);
-      res.status(200).json(ok(customer));
-    } catch (error) { next(error); }
-  };
+  getById = asyncHandler(async (req: Request, res: Response) => {
+    const customer = await this.service.getCustomerById(req.params.id);
+    res.status(200).json(ok(customer));
+  });
 
-  create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      // Whitelist dei campi: id/status inviati dal client vengono ignorati
-      const { fiscalCode, firstName, lastName, email, phone } = req.body ?? {};
-      const customer = await this.service.createCustomer({ fiscalCode, firstName, lastName, email, phone });
-      res.status(201).json(ok(customer));
-    } catch (error) { next(error); }
-  };
+  // req.body è già validato e ripulito da validate(createCustomerSchema)
+  create = asyncHandler(async (req: Request, res: Response) => {
+    const customer = await this.service.createCustomer(req.body);
+    res.status(201).json(ok(customer));
+  });
 
-  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { firstName, lastName, email, phone, status } = req.body ?? {};
-      const customer = await this.service.updateCustomer(req.params.id, { firstName, lastName, email, phone, status });
-      res.status(200).json(ok(customer));
-    } catch (error) { next(error); }
-  };
+  update = asyncHandler(async (req: Request, res: Response) => {
+    const customer = await this.service.updateCustomer(req.params.id, req.body);
+    res.status(200).json(ok(customer));
+  });
 
-  delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      await this.service.deleteCustomer(req.params.id);
-      res.status(204).send();
-    } catch (error) { next(error); }
-  };
+  delete = asyncHandler(async (req: Request, res: Response) => {
+    await this.service.deleteCustomer(req.params.id);
+    res.status(204).send();
+  });
 }
